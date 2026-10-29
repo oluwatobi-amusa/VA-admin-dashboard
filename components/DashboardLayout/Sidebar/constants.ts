@@ -21,5 +21,7 @@ export const LINKS: SideBarLinks = [
   },
   { name: 'Merchants', url: '/dashboard/merchants', icon: HiUsers },
   { name: 'Document Verification', url: '/dashboard/document-verification', icon: BiCheckShield },
+  { name: 'Users', url: '/dashboard/users', icon: HiUsers },
+  { name: 'Approvals', url: '/dashboard/approvals', icon: BiCheckShield },
   { name: 'Disputes', url: '/dashboard/disputes', icon: BiBookAlt }
 ];

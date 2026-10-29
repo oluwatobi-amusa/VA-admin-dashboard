@@ -53,11 +53,7 @@ export default function DocumentVerification() {
         items={(['Pending', 'Approved', 'Declined'] as const).map((value) => ({
           label: `${value} verification`,
           value: submissions.filter(({ business }) => business.verification.status === value)
-            .length,
-          description:
-            value === 'Pending'
-              ? 'Business submissions awaiting review'
-              : `Business submissions ${value.toLowerCase()}`
+            .length
         }))}
       />
       <Card className="overflow-hidden shadow-none">

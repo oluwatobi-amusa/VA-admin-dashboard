@@ -1,3 +1,4 @@
+import { workflowService, demoIdentity } from '@/lib/approval-workflow';
 import {
   DashboardData,
   Business,
@@ -121,7 +122,6 @@ const transactions: Transaction[] = tills.flatMap((till, i) =>
 
 const STORAGE_KEY = 'virtual-account-disabled-tills-v1';
 const RESTORED_MERCHANTS_KEY = 'virtual-account-restored-merchants-v1';
-const VERIFICATION_KEY = 'virtual-account-business-verifications-v2';
 const UPLOADS_KEY = 'virtual-account-document-uploads-v1';
 interface SavedUpload {
   merchantId: string;
@@ -170,61 +170,6 @@ function currentMerchants(): Merchant[] {
     })
   }));
 }
-interface VerificationDecision {
-  merchantId: string;
-  businessId: string;
-  status: 'Approved' | 'Declined';
-  reason?: string;
-  reviewedAt: string;
-  submission: string;
-}
-function submissionKey(business: Business) {
-  return JSON.stringify([business.id, business.documents]);
-}
-function readVerifications(): VerificationDecision[] {
-  let saved = localStorage.getItem(VERIFICATION_KEY);
-  if (!saved) {
-    const legacy: unknown = JSON.parse(
-      localStorage.getItem('virtual-account-verifications-v1') || '[]'
-    );
-    if (!Array.isArray(legacy)) throw new Error('Saved verification decisions could not be read.');
-    const migrated: VerificationDecision[] = [];
-    for (const merchant of currentMerchants()) {
-      const previous = legacy.find(
-        (item) =>
-          item &&
-          item.merchantId === merchant.id &&
-          item.submission ===
-            JSON.stringify(merchant.businesses.map((business) => [business.id, business.documents]))
-      );
-      if (previous) {
-        for (const business of merchant.businesses)
-          migrated.push({
-            ...previous,
-            businessId: business.id,
-            submission: submissionKey(business)
-          });
-      }
-    }
-    saved = JSON.stringify(migrated);
-  }
-  const value: unknown = JSON.parse(saved);
-  if (
-    !Array.isArray(value) ||
-    value.some(
-      (item) =>
-        !item ||
-        typeof item.merchantId !== 'string' ||
-        typeof item.businessId !== 'string' ||
-        !['Approved', 'Declined'].includes(item.status) ||
-        typeof item.submission !== 'string' ||
-        typeof item.reviewedAt !== 'string' ||
-        (item.status === 'Declined' && (typeof item.reason !== 'string' || !item.reason.trim()))
-    )
-  )
-    throw new Error('Saved verification decisions could not be read.');
-  return value;
-}
 const delay = () => new Promise<void>((resolve) => setTimeout(resolve, 350));
 function readRestoredMerchants(): string[] {
   const value: unknown = JSON.parse(localStorage.getItem(RESTORED_MERCHANTS_KEY) || '[]');
@@ -245,15 +190,18 @@ export const virtualAccountsService = {
     await delay();
     const disabled = readDisabled();
     const restored = readRestoredMerchants();
-    const decisions = readVerifications();
     const dashboardMerchants: Merchant[] = currentMerchants().map((merchant) => {
       const businesses = merchant.businesses.map((business): Business => {
-        const decision = decisions.find(
-          (item) =>
-            item.merchantId === merchant.id &&
-            item.businessId === business.id &&
-            item.submission === submissionKey(business)
-        );
+        const cycle = workflowService.current(merchant.id, business);
+        const lastReview = cycle.reviews.at(-1);
+        const decision =
+          cycle.stage === 'Approved' || cycle.stage === 'Rejected'
+            ? {
+                status: cycle.stage === 'Approved' ? ('Approved' as const) : ('Declined' as const),
+                reason: lastReview?.comment,
+                reviewedAt: lastReview?.timestamp
+              }
+            : undefined;
         const submittedAt =
           business.documents
             .map((document) => document.uploadedAt)
@@ -339,28 +287,12 @@ export const virtualAccountsService = {
       )
     )
       throw new Error('All required documents must be uploaded before approval.');
-    const decisions = readVerifications();
-    const submission = submissionKey(business);
-    if (
-      decisions.some(
-        (item) =>
-          item.merchantId === id && item.businessId === businessId && item.submission === submission
-      )
-    )
-      throw new Error('This submission has already been reviewed. Refresh the verification queue.');
-    localStorage.setItem(
-      VERIFICATION_KEY,
-      JSON.stringify([
-        ...decisions.filter((item) => !(item.merchantId === id && item.businessId === businessId)),
-        {
-          merchantId: id,
-          businessId,
-          status,
-          reason: status === 'Declined' ? reason.trim() : undefined,
-          reviewedAt: new Date().toISOString(),
-          submission
-        }
-      ])
+    const submission = workflowService.current(id, business);
+    workflowService.decide(
+      submission.id,
+      demoIdentity.role(),
+      status === 'Declined' ? 'Rejected' : 'Approved',
+      reason
     );
   },
   async uploadDocument(

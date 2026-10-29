@@ -2,16 +2,7 @@
 
 import { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  Search,
-  Users,
-  Wallet,
-  CreditCard,
-  ChevronLeft,
-  ChevronRight,
-  Loader2
-} from 'lucide-react';
+import { ArrowLeft, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { virtualAccountsService } from '@/app/(dashboard)/dashboard/queries/virtual-accounts';
 import { Badge } from '@/components/ui/badge';
@@ -84,39 +75,29 @@ export function StatusBadge({ status }: { status: string }) {
   const color =
     status === 'Active' || status === 'Successful' || status === 'Approved'
       ? 'border-green-200 bg-green-50 text-green-700'
-      : status === 'Pending'
+      : status === 'Pending' || status.startsWith('Pending ')
         ? 'border-orange-200 bg-orange-50 text-orange-700'
-        : 'border-red-200 bg-red-50 text-red-700';
+        : status === 'Awaiting previous stage'
+          ? 'border-gray-200 bg-gray-50 text-gray-500'
+          : 'border-red-200 bg-red-50 text-red-700';
   return (
-    <Badge variant="outline" className={`${color} gap-1.5 whitespace-nowrap font-medium`}>
+    <Badge variant="outline" className={`${color} gap-1.5 whitespace-nowrap text-xs font-medium`}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {status}
     </Badge>
   );
 }
-export function SummaryCards({
-  items
-}: {
-  items: { label: string; value: string | number; description: string }[];
-}) {
-  const icons = [Users, Wallet, CreditCard];
+export function SummaryCards({ items }: { items: { label: string; value: string | number }[] }) {
   return (
-    <div className="grid gap-3 md:grid-cols-3">
-      {items.map((item, i) => {
-        const Icon = icons[i];
+    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {items.map((item) => {
         return (
           <Card key={item.label} className="shadow-none">
             <CardContent className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <p className="text-sm text-gray-500">{item.label}</p>
-                <span className="rounded-lg bg-blue-50 p-2 text-starter-primary">
-                  <Icon size={20} />
-                </span>
               </div>
-              <p className="break-words text-2xl font-semibold tabular-nums text-gray-900">
-                {item.value}
-              </p>
-              <p className="mt-2 text-xs text-gray-500">{item.description}</p>
+              <p className="break-words text-[20px] font-bold text-gray-900"> {item.value}</p>
             </CardContent>
           </Card>
         );
@@ -169,23 +150,28 @@ export function DataState({ query }: { query: ReturnType<typeof useDashboard> })
 export function SearchInput({
   value,
   onChange,
+  label = 'Search',
   placeholder
 }: {
   value: string;
   onChange: (value: string) => void;
+  label?: string;
   placeholder: string;
 }) {
   return (
-    <div className="relative min-w-[220px] flex-1">
-      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-      <Input
-        aria-label={placeholder}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="pl-9"
-      />
-    </div>
+    <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-xs text-gray-600">
+      <span>{label}</span>
+      <span className="relative">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <Input
+          aria-label={label}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="pl-9"
+        />
+      </span>
+    </label>
   );
 }
 export function FilterSelect({
@@ -200,7 +186,7 @@ export function FilterSelect({
   options: string[];
 }) {
   return (
-    <label className="flex items-center gap-2 text-xs text-gray-500">
+    <label className="flex flex-col gap-1 text-xs text-gray-600">
       <span>{label}</span>
       <select
         aria-label={label}
@@ -228,8 +214,8 @@ export function DateFilters({
 }) {
   return (
     <>
-      <label className="flex items-center gap-2 text-xs text-gray-500">
-        From
+      <label className="flex flex-col gap-1 text-xs text-gray-600">
+        <span>From</span>
         <Input
           className="w-auto"
           type="date"
@@ -239,8 +225,8 @@ export function DateFilters({
           onChange={(e) => onFrom(e.target.value)}
         />
       </label>
-      <label className="flex items-center gap-2 text-xs text-gray-500">
-        To
+      <label className="flex flex-col gap-1 text-xs text-gray-600">
+        <span>To</span>
         <Input
           className="w-auto"
           type="date"
@@ -271,7 +257,7 @@ export function RecordsTable({
           {columns.map((column) => (
             <TableHead
               key={column}
-              className={`whitespace-nowrap text-xs ${monetary(column) ? 'text-right' : ''}`}
+              className={`whitespace-nowrap text-[16px] font-bold ${monetary(column) ? 'text-right' : ''}`}
             >
               {column}
             </TableHead>
@@ -285,7 +271,7 @@ export function RecordsTable({
               {cells.map((cell, j) => (
                 <TableCell
                   key={j}
-                  className={`whitespace-nowrap text-xs ${monetary(columns[j]) ? 'text-right tabular-nums' : ''}`}
+                  className={`whitespace-nowrap text-[16px] font-sans ${monetary(columns[j]) ? 'text-right tabular-nums' : ''}`}
                 >
                   {cell}
                 </TableCell>

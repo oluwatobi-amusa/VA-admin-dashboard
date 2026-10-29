@@ -1,8 +1,10 @@
 'use client';
+import ApprovalProgress from './ApprovalProgress';
+import { workflowService } from '@/lib/approval-workflow';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Download, Eye, FileText, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FileText, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Merchant,
@@ -316,23 +318,32 @@ export default function MerchantDetails({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeading
-          title={merchant.name}
-          description={merchant.email}
-          back={{ href: '/dashboard/merchants', label: 'Back to Merchants' }}
-        />
-        <div className="flex items-center gap-3">
-          <StatusBadge status={merchant.status} />
-          {merchant.status === 'Suspended' && (
-            <Button
-              disabled={restoring}
-              onClick={() => {
-                void restore();
-              }}
-            >
-              {restoring ? 'Restoring…' : 'Restore merchant'}
-            </Button>
-          )}
+        <div className="space-y-2">
+          <Link
+            href="/dashboard/merchants"
+            className="inline-flex items-center gap-2 text-sm text-starter-primary hover:underline"
+          >
+            <ArrowLeft size={16} />
+            Back to Merchants
+          </Link>
+          <div>
+            <h1 className="text-[24px] font-bold text-gray-900">{merchant.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-gray-500">{merchant.email}</p>
+              <StatusBadge status={merchant.status} />
+            </div>
+          </div>
+        </div>
+        {merchant.status === 'Suspended' && (
+          <Button
+            disabled={restoring}
+            onClick={() => {
+              void restore();
+            }}
+          >
+            {restoring ? 'Restoring…' : 'Restore merchant'}
+          </Button>
+        )}
         </div>
       </div>
       {restoreError && (
@@ -372,12 +383,24 @@ export default function MerchantDetails({
               </label>
             </div>
           )}
+          {business && (
+            <ApprovalProgress submission={workflowService.current(merchantId, business)} />
+          )}
+          {business && (
+            <Button asChild variant="outline">
+              <Link href={`/dashboard/document-verification/${merchantId}/${business.id}`}>
+                Review submission
+              </Link>
+            </Button>
+          )}
           <Accordion
             type="multiple"
-            defaultValue={['documents', 'personal', 'business']}
             className="space-y-4"
           >
-            <AccordionItem value="documents" className="rounded-lg border bg-white px-5">
+            <AccordionItem
+              value="documents"
+              className="rounded-[10px] border border-b-4 border-b-[rgba(196,196,196,0.24)] bg-white px-5"
+            >
               <AccordionTrigger>Uploaded documents</AccordionTrigger>
               <AccordionContent>
                 <p className="mb-3 text-xs text-gray-500">
@@ -455,7 +478,10 @@ export default function MerchantDetails({
                 </div>
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="personal" className="rounded-lg border bg-white px-5">
+            <AccordionItem
+              value="personal"
+              className="rounded-[10px] border border-b-4 border-b-[rgba(196,196,196,0.24)] bg-white px-5"
+            >
               <AccordionTrigger>Personal information</AccordionTrigger>
               <AccordionContent>
                 <Fields
@@ -469,7 +495,10 @@ export default function MerchantDetails({
                 />
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="business" className="rounded-lg border bg-white px-5">
+            <AccordionItem
+              value="business"
+              className="rounded-[10px] border border-b-4 border-b-[rgba(196,196,196,0.24)] bg-white px-5"
+            >
               <AccordionTrigger>Business information</AccordionTrigger>
               <AccordionContent>
                 {business ? (

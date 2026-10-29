@@ -119,8 +119,8 @@ module.exports = {
           ring: 'hsl(var(--sidebar-ring))'
         },
         starter: {
-          primary: '#425590',
-          blue: '#245EAC',
+          primary: '#232555',
+          blue: '#232555',
           gray: '#61616A'
         }
       },

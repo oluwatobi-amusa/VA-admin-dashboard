@@ -1,5 +1,6 @@
 'use client';
 
+import { useDemoRole } from '@/components/VirtualAccounts/DemoRole';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FC } from 'react';
@@ -18,6 +19,7 @@ interface SidebarProps {
 
 const Sidebar: FC<SidebarProps> = ({ isSidebarOpen = true, onToggleSidebar }) => {
   const pathname = usePathname();
+  const role = useDemoRole();
 
   const checkIfLinkIsActive = (link: string) => {
     if (DASHBOARD_ROUTE.includes(link)) {
@@ -47,7 +49,7 @@ const Sidebar: FC<SidebarProps> = ({ isSidebarOpen = true, onToggleSidebar }) =>
         <div className="flex items-center justify-between  p-4 z-50">
           <div className="flex items-center gap-2">
             {/* <MarbleLogo /> */}
-            <p className="text-sm font-semibold text-starter-primary">Virtual Accounts</p>
+            <p className="text-sm font-bold text-starter-primary">Virtual Account Admin Dashboard</p>
           </div>
           <button
             type="button"
@@ -61,10 +63,25 @@ const Sidebar: FC<SidebarProps> = ({ isSidebarOpen = true, onToggleSidebar }) =>
 
         {/* Navigation Links */}
         <div className="flex-1 overflow-y-auto px-2 py-3">
-          <div className="space-y-1">
+          <div className="grid space-y-[10px]">
             {LINKS.map((link) => {
               const SideBarIcon = link.icon;
               const isActive = checkIfLinkIsActive(link.url);
+
+              if (link.name === 'Users' && role !== 'Admin') {
+                return (
+                  <div
+                    key={link.name}
+                    aria-disabled="true"
+                    title="Select Admin in the Demo role selector to manage users."
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-[16px] font-medium text-gray-400"
+                  >
+                    <SideBarIcon style={LINK_ICON_STYLE} />
+                    <span>Users</span>
+                    <span className="ml-auto text-xs">Admin only</span>
+                  </div>
+                );
+              }
 
               return (
                 <Link
@@ -79,7 +96,7 @@ const Sidebar: FC<SidebarProps> = ({ isSidebarOpen = true, onToggleSidebar }) =>
                 >
                   <div
                     className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100',
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-[16px] font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100',
                       isActive && 'bg-blue-50 text-starter-primary shadow-sm'
                     )}
                   >

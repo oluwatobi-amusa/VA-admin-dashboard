@@ -90,7 +90,7 @@ const LoginPage = () => {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full h-12 bg-[#6B5A3A] hover:bg-[#5A4A2F] text-white font-medium rounded-md"
+              className="h-12 w-full font-medium"
             >
               Sign in
             </Button>

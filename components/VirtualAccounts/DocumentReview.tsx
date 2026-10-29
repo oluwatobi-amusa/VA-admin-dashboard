@@ -1,15 +1,15 @@
 'use client';
 
+import { workflowService } from '@/lib/approval-workflow';
+import ApprovalProgress from './ApprovalProgress';
+import { useDemoRole } from './DemoRole';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Download, Eye, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Business, UploadedDocument } from '@/app/(dashboard)/dashboard/types/virtual-accounts';
-import {
-  REQUIRED_DOCUMENTS,
-  virtualAccountsService
-} from '@/app/(dashboard)/dashboard/queries/virtual-accounts';
+import { REQUIRED_DOCUMENTS } from '@/app/(dashboard)/dashboard/queries/virtual-accounts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,16 +21,28 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import { DATA_KEY, DataState, PageHeading, State, StatusBadge, date, useDashboard } from './shared';
+import {
+  Fields,
+  DATA_KEY,
+  DataState,
+  PageHeading,
+  State,
+  StatusBadge,
+  date,
+  useDashboard
+} from './shared';
 
 export default function DocumentReview({
   merchantId,
-  businessId
+  businessId,
+  submissionId
 }: {
   merchantId: string;
   businessId: string;
+  submissionId?: string;
 }) {
   const query = useDashboard();
+  const role = useDemoRole();
   const queryClient = useQueryClient();
   const [decision, setDecision] = useState<'Approved' | 'Declined' | null>(null);
   const [reason, setReason] = useState('');
@@ -44,6 +56,11 @@ export default function DocumentReview({
 
   const selected = merchant?.businesses.find((business) => business.id === businessId);
 
+  const cycle = selected ? workflowService.current(merchantId, selected) : undefined;
+  const submission = submissionId
+    ? workflowService.all().find((s) => s.id === submissionId)
+    : cycle;
+  const canReview = submission?.id === cycle?.id && submission?.stage === role;
   async function openPreview(document: UploadedDocument) {
     const request = ++previewRequest.current;
     setPreview(document);
@@ -67,9 +84,15 @@ export default function DocumentReview({
     setBusy(true);
     setError('');
     try {
-      await virtualAccountsService.reviewBusiness(merchantId, selected.id, decision, reason);
+      if (!submission) throw new Error('Submission not found.');
+      workflowService.decide(
+        submission.id,
+        role,
+        decision === 'Declined' ? 'Rejected' : 'Approved',
+        reason
+      );
       await queryClient.invalidateQueries({ queryKey: DATA_KEY });
-      toast.success(`${selected.name}: verification ${decision.toLowerCase()}.`);
+      toast.success(`${selected.name}: ${role} review recorded.`);
       setDecision(null);
       setReason('');
     } catch (cause) {
@@ -90,7 +113,7 @@ export default function DocumentReview({
   }
 
   if (!query.data) return <DataState query={query} />;
-  const back = { href: '/dashboard/document-verification', label: 'Back to Document Verification' };
+  const back = { href: '/dashboard/approvals', label: 'Back to Approvals' };
   if (!selected)
     return (
       <div className="space-y-4">
@@ -112,7 +135,7 @@ export default function DocumentReview({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="space-y-2">
                 <p className="text-sm text-gray-500">Merchant: {merchant?.name}</p>
-                <StatusBadge status={selected.verification.status} />
+                {submission && <ApprovalProgress submission={submission} />}
               </div>
               <Button asChild variant="ghost" size="sm">
                 <Link href={`/dashboard/merchants/${merchantId}?business=${selected.id}`}>
@@ -120,6 +143,15 @@ export default function DocumentReview({
                 </Link>
               </Button>
             </div>
+            <Fields
+              entries={[
+                ['Merchant email', merchant?.email],
+                ['Business email', selected.email],
+                ['RC number', selected.rcNumber],
+                ['Tax ID', selected.taxId],
+                ['Address', selected.address]
+              ]}
+            />
             {selected.verification.reviewedAt && (
               <p className="text-sm text-gray-500">
                 Reviewed {date(selected.verification.reviewedAt, true)}
@@ -133,55 +165,57 @@ export default function DocumentReview({
                 </p>
               </div>
             )}
-            {[selected].map((business) => (
-              <section key={business.id} className="space-y-3">
-                <h3 className="font-semibold">{business.name}</h3>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {REQUIRED_DOCUMENTS.map((label) => {
-                    const document = business.documents.find((item) => item.label === label);
-                    return (
-                      <div key={label} className="min-w-0 rounded-lg border p-4">
-                        <h4 className="flex items-center gap-2 text-sm font-medium">
-                          <FileText size={16} />
-                          {label}
-                        </h4>
-                        {document ? (
-                          <>
-                            <p className="mt-2 break-all text-xs text-gray-700">
-                              {document.filename}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-500">
-                              Uploaded {date(document.uploadedAt, true)}
-                            </p>
-                            <div className="mt-3 flex flex-wrap gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  void openPreview(document);
-                                }}
-                              >
-                                <Eye />
-                                Preview
-                              </Button>
-                              <Button size="sm" variant="ghost" asChild>
-                                <a href={document.url} download={document.filename}>
-                                  <Download />
-                                  Download
-                                </a>
-                              </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <p className="mt-2 text-xs text-red-600">Not uploaded</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-            {selected.verification.status === 'Pending' && (
+            {[{ ...selected, documents: submission?.documents || selected.documents }].map(
+              (business) => (
+                <section key={business.id} className="space-y-3">
+                  <h3 className="font-semibold">{business.name}</h3>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {REQUIRED_DOCUMENTS.map((label) => {
+                      const document = business.documents.find((item) => item.label === label);
+                      return (
+                        <div key={label} className="min-w-0 rounded-lg border p-4">
+                          <h4 className="flex items-center gap-2 text-sm font-medium">
+                            <FileText size={16} />
+                            {label}
+                          </h4>
+                          {document ? (
+                            <>
+                              <p className="mt-2 break-all text-xs text-gray-700">
+                                {document.filename}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                Uploaded {date(document.uploadedAt, true)}
+                              </p>
+                              <div className="mt-3 flex flex-wrap gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    void openPreview(document);
+                                  }}
+                                >
+                                  <Eye />
+                                  Preview
+                                </Button>
+                                <Button size="sm" variant="ghost" asChild>
+                                  <a href={document.url} download={document.filename}>
+                                    <Download />
+                                    Download
+                                  </a>
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="mt-2 text-xs text-red-600">Not uploaded</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )
+            )}
+            {canReview && (
               <>
                 {missing.length > 0 && (
                   <p className="text-sm text-orange-700">
@@ -196,7 +230,7 @@ export default function DocumentReview({
                       setError('');
                     }}
                   >
-                    Decline verification
+                    Reject submission
                   </Button>
                   <Button
                     disabled={missing.length > 0}
@@ -205,12 +239,53 @@ export default function DocumentReview({
                       setError('');
                     }}
                   >
-                    Approve verification
+                    Approve submission
                   </Button>
                 </div>
               </>
             )}
           </>
+        )}
+      </Card>
+      {!canReview && submission && (
+        <p className="text-sm text-gray-500">
+          {submission.stage === 'Approved' || submission.stage === 'Rejected'
+            ? 'This approval cycle is closed.'
+            : 'Awaiting ' + submission.stage + ' review.'}
+        </p>
+      )}
+      <Card className="space-y-4 p-5 shadow-none">
+        <h2 className="font-semibold">Review history</h2>
+        {(submissionId
+          ? [submission].filter(Boolean)
+          : workflowService.history(merchantId, businessId)
+        ).map(
+          (cycle) =>
+            cycle && (
+              <section key={cycle.id} className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Cycle submitted {date(cycle.submittedAt, true)}
+                </p>
+                {cycle.reviews.length ? (
+                  cycle.reviews.map((review, i) => (
+                    <div key={i} className="rounded border p-3 text-sm">
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <p className="font-medium">
+                          {review.reviewer} ? {review.role}
+                        </p>
+                        <StatusBadge status={review.decision} />
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">{date(review.timestamp, true)}</p>
+                      <p className="mt-2 whitespace-pre-wrap break-words">
+                        {review.comment || 'No comment provided.'}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">No decisions yet.</p>
+                )}
+              </section>
+            )
         )}
       </Card>
       <Dialog
@@ -229,7 +304,7 @@ export default function DocumentReview({
         >
           <DialogHeader>
             <DialogTitle>
-              {decision === 'Approved' ? 'Approve' : 'Decline'} business verification?
+              {decision === 'Approved' ? 'Approve' : 'Reject'} {role} review?
             </DialogTitle>
             <DialogDescription>
               {decision === 'Approved'
@@ -244,10 +319,10 @@ export default function DocumentReview({
               void submit();
             }}
           >
-            {decision === 'Declined' && (
+            {
               <div className="space-y-2">
                 <label htmlFor="decline-reason" className="text-sm font-medium">
-                  Reason for decline <span className="text-red-600">*</span>
+                  {decision === 'Declined' ? 'Rejection reason (required)' : 'Comment (optional)'}
                 </label>
                 <Textarea
                   id="decline-reason"
@@ -257,14 +332,14 @@ export default function DocumentReview({
                     setError('');
                   }}
                   placeholder="Explain what is wrong with the documents and what the merchant needs to correct."
-                  required
+                  required={decision === 'Declined'}
                   maxLength={1000}
                   disabled={busy}
                   aria-describedby={error ? 'verification-error' : undefined}
                 />
                 <p className="text-xs text-gray-500">{reason.length} / 1,000 characters</p>
               </div>
-            )}
+            }
             {error && (
               <p id="verification-error" role="alert" className="text-sm text-red-600">
                 {error}
@@ -287,8 +362,8 @@ export default function DocumentReview({
                 {busy
                   ? 'Saving…'
                   : decision === 'Approved'
-                    ? 'Approve verification'
-                    : 'Decline verification'}
+                    ? 'Approve submission'
+                    : 'Reject submission'}
               </Button>
             </DialogFooter>
           </form>

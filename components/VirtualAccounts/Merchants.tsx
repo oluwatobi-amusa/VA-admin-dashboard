@@ -15,7 +15,6 @@ import {
   date,
   inRange,
   money,
-  PageHeading,
   StatusBadge,
   SummaryCards,
   useDashboard
@@ -42,23 +41,19 @@ export default function Merchants() {
   );
   return (
     <div className="space-y-6">
-      <PageHeading title="Merchants" description="Manage merchants and their till accounts." />
       <SummaryCards
         items={[
           {
             label: 'Total Merchants',
-            value: merchants.length,
-            description: 'All registered merchants'
+            value: merchants.length
           },
           {
-            label: 'Active Merchants',
-            value: merchants.filter((m) => m.status === 'Active').length,
-            description: 'Merchants with an active status'
+            label: 'Virtual Accounts',
+            value: merchants.filter((m) => m.status === 'Active').length
           },
           {
             label: 'Till accounts',
-            value: tills.length,
-            description: 'Across all merchants and businesses'
+            value: tills.length
           }
         ]}
       />
@@ -72,6 +67,7 @@ export default function Merchants() {
           </h2>
           <div className="flex flex-wrap items-center gap-3">
             <SearchInput
+              label="Search merchants"
               value={search}
               onChange={change(setSearch)}
               placeholder="Search merchant name or email"
@@ -128,18 +124,15 @@ export default function Merchants() {
               date(m.createdAt),
               <StatusBadge key="status" status={m.status} />,
               <StatusBadge key="verification" status={m.verification.status} />,
-              <Button
-                key="action"
-                asChild
-                variant="ghost"
-                size="sm"
-                className="text-starter-primary"
-              >
-                <Link href={`/dashboard/merchants/${m.id}`}>
+              <span key="action" className="whitespace-nowrap">
+                <Link
+                  href={`/dashboard/merchants/${m.id}`}
+                  className="inline-flex items-center gap-1 text-xs text-starter-primary"
+                >
                   View merchant
-                  <ArrowUpRight />
+                  <ArrowUpRight size={14} aria-hidden="true" />
                 </Link>
-              </Button>
+              </span>
             ];
           })}
         />
