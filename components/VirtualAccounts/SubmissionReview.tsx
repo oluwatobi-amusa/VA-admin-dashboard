@@ -7,7 +7,7 @@ export default function SubmissionReview({ submissionId }: { submissionId: strin
   if (!query.data) return <DataState query={query} />;
   const s = workflowService.all().find((s) => s.id === submissionId);
   return s ? (
-    <DocumentReview merchantId={s.merchantId} businessId={s.businessId} submissionId={s.id} />
+    <DocumentReview merchantId={s.merchantId} businessId={s.businessId} />
   ) : (
     <State title="Submission not found" />
   );

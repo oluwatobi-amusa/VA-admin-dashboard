@@ -35,6 +35,7 @@ test('mock relationships, account numbers, totals and all requested statuses are
   assert.equal(data.tills.length, 27);
   assert.equal(data.merchants.filter((m) => m.status === 'Active').length, 9);
   assert.ok(data.tills.some((t) => t.status === 'Active'));
+  assert.ok(data.tills.every((t) => ['Active', 'Inactive'].includes(t.status)));
   assert.equal(
     data.tills.filter((t) => t.merchantId === 'merchant-1').reduce((sum, t) => sum + t.balance, 0),
     1027260.5
@@ -46,7 +47,11 @@ test('mock relationships, account numbers, totals and all requested statuses are
     assert.ok(till.balance >= 0);
   }
   assert.ok(data.merchants.every((merchant) => merchant.name === `${merchant.firstName} ${merchant.lastName}`));
-  assert.ok(data.merchants.flatMap((merchant) => merchant.businesses).some((business) => business.status === 'Active'));
+  assert.ok(
+    data.merchants
+      .flatMap((merchant) => merchant.businesses)
+      .every((business) => ['Active', 'Pending', 'Declined'].includes(business.status))
+  );
   for (const transaction of data.transactions) {
     assert.ok(data.tills.some((t) => t.id === transaction.tillId));
     assert.ok(['Successful', 'Pending', 'Failed'].includes(transaction.status));
@@ -57,16 +62,19 @@ test('mock relationships, account numbers, totals and all requested statuses are
   assert.ok(data.merchants.every((m) => !('bvn' in m) && /^\d{4}$/.test(m.bvnLastFour)));
 });
 
-test('disabling persists across service loads, preserves balances, and rejects invalid accounts', async () => {
+test('deactivation persists across service loads, preserves balances, and rejects invalid accounts', async () => {
   const storage = new Map();
   const api = service(storage);
   const before = await api.getDashboard();
   await api.disableTill('till-1-1');
   await api.disableTill('till-1-1');
   const after = await service(storage).getDashboard();
-  assert.equal(after.tills.find((t) => t.id === 'till-1-1').status, 'Disabled');
+  assert.equal(after.tills.find((t) => t.id === 'till-1-1').status, 'Inactive');
   assert.equal(after.tills.find((t) => t.id === 'till-1-1').balance, before.tills[0].balance);
-  assert.equal(after.tills.filter((t) => t.status === 'Active').length, before.tills.filter((t) => t.status === 'Active').length);
+  assert.equal(
+    after.tills.filter((t) => t.status === 'Active').length,
+    before.tills.filter((t) => t.status === 'Active').length - 1
+  );
   await assert.rejects(api.disableTill('unknown-account'), /Account not found/);
 });
 
@@ -89,7 +97,7 @@ test('storage failures do not change account state', async () => {
   };
   const api = service(storage);
   await assert.rejects(api.disableTill('till-1-1'), /Storage unavailable/);
-  assert.equal((await api.getDashboard()).tills[0].status, 'Pending');
+  assert.equal((await api.getDashboard()).tills[0].status, 'Active');
 });
 
 test('restoring a suspended merchant persists and preserves its accounts and history', async () => {
@@ -116,27 +124,20 @@ test('failed merchant restoration leaves the merchant suspended', async () => {
   assert.equal((await api.getDashboard()).merchants.find((m) => m.id === 'merchant-3').status, 'Suspended');
 });
 
-test('business reviews activate only the approved business and corrected uploads preserve history', async () => {
+test('business verification is decided in one review and corrected uploads reset the decision', async () => {
   const storage = new Map();
   const api = service(storage);
   const before = await api.getDashboard();
-  for (const role of ['Staff', 'Compliance', 'Admin']) {
-    storage.set('virtual-account-demo-role', role);
-    await api.reviewBusiness('merchant-1', 'business-1-1', 'Approved', 'Verified');
-    const merchant = (await api.getDashboard()).merchants[0];
-    assert.equal(merchant.businesses[0].status, role === 'Admin' ? 'Active' : 'Pending');
-    assert.equal(merchant.businesses[1].status, 'Pending');
-  }
+  await api.reviewBusiness('merchant-1', 'business-1-1', 'Approved', 'Verified');
   let after = await api.getDashboard();
+  assert.equal(after.merchants[0].businesses[0].status, 'Active');
+  assert.equal(after.merchants[0].businesses[0].verification.status, 'Approved');
+  assert.equal(after.merchants[0].businesses[1].status, 'Pending');
   assert.equal(JSON.stringify(after.transactions), JSON.stringify(before.transactions));
   assert.equal(JSON.stringify(after.tills.map(({status,...t}) => t)), JSON.stringify(before.tills.map(({status,...t}) => t)));
   await api.uploadDocument('merchant-1', 'business-1-1', { label: 'Tax Document', filename: 'corrected.pdf', type: 'application/pdf', url: 'data:application/pdf;base64,JVBERi0=' });
   after = await service(storage).getDashboard();
   assert.equal(after.merchants[0].businesses[0].status, 'Pending');
-  const cycles = JSON.parse(storage.get('virtual-account-approval-cycles-v1')).filter(s => s.businessId === 'business-1-1');
-  assert.equal(cycles.length, 2);
-  assert.equal(cycles[0].stage, 'Approved');
-  assert.equal(cycles[0].reviews.length, 3);
-  assert.equal(cycles[1].stage, 'Staff');
-  await assert.rejects(api.reviewBusiness('merchant-1', 'business-1-1', 'Approved'), /permission/);
+  assert.equal(after.merchants[0].businesses[0].verification.status, 'Pending');
+  await assert.rejects(api.reviewBusiness('merchant-1', 'business-1-2', 'Approved'), /All required documents/);
 });

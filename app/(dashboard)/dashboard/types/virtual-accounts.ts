@@ -1,5 +1,5 @@
 export type MerchantStatus = 'Active' | 'Suspended';
-export type TillStatus = 'Active' | 'Pending' | 'Disabled';
+export type TillStatus = 'Active' | 'Inactive';
 export type TransactionStatus = 'Successful' | 'Pending' | 'Failed';
 export type VerificationStatus = 'Pending' | 'Approved' | 'Declined';
 export interface MerchantVerification {

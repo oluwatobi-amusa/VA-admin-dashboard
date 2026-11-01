@@ -1,6 +1,4 @@
 'use client';
-import ApprovalProgress from './ApprovalProgress';
-import { workflowService } from '@/lib/approval-workflow';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -74,7 +72,7 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
     try {
       await virtualAccountsService.disableTill(selected.id);
       await queryClient.invalidateQueries({ queryKey: DATA_KEY });
-      toast.success(`${selected.name} has been disabled.`);
+      toast.success(`${selected.name} has been deactivated.`);
       setSelected(null);
     } catch (cause) {
       const message =
@@ -98,8 +96,8 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
             }}
             placeholder="Search account name or number"
           />
-          <label className="flex flex-wrap items-center gap-3 text-sm font-medium">
-            Business name
+          <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-xs text-gray-600">
+            <span>Business</span>
             <select
               aria-label="Filter till accounts by business"
               value={business}
@@ -107,7 +105,7 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
                 setBusiness(event.target.value);
                 setPage(1);
               }}
-              className="rounded-md border bg-white px-3 py-2 text-sm font-normal"
+              className="h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-gray-900 ring-offset-background focus-visible:outline-none"
             >
               <option value="">All businesses</option>
               {merchant.businesses.map((item) => (
@@ -144,13 +142,13 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  disabled={t.status === 'Disabled'}
+                  disabled={t.status === 'Inactive'}
                   onSelect={() => {
                     setSelected(t);
                     setError('');
                   }}
                 >
-                  Disable account
+                  Deactivate account
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href={`/dashboard/merchants/${merchant.id}/tills/${t.id}`}>
@@ -178,9 +176,9 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
           }}
         >
           <DialogHeader>
-            <DialogTitle>Disable account?</DialogTitle>
+            <DialogTitle>Deactivate account?</DialogTitle>
             <DialogDescription>
-              {selected?.name} ({selected?.number}) will be disabled and will no longer be available
+              {selected?.name} ({selected?.number}) will become inactive and will no longer be available
               to receive payments.
             </DialogDescription>
           </DialogHeader>
@@ -200,7 +198,7 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
                 void disable();
               }}
             >
-              {busy ? 'Disabling…' : 'Disable account'}
+              {busy ? 'Deactivating…' : 'Deactivate account'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -228,9 +226,6 @@ export default function MerchantDetails({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
   const [tab, setTab] = useState(initialTab);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  const uploadSubmitting = useRef(false);
   if (!query.data) return <DataState query={query} />;
   const merchant = query.data.merchants.find((m) => m.id === merchantId);
   if (!merchant)
@@ -244,45 +239,6 @@ export default function MerchantDetails({
       </div>
     );
   const business = merchant.businesses.find((b) => b.id === businessId) || merchant.businesses[0];
-  async function uploadDocument(file: File, label: string, selectedBusinessId: string) {
-    if (!merchant || uploadSubmitting.current) return;
-    setUploadError('');
-    if (
-      !['application/pdf', 'image/png', 'image/jpeg'].includes(file.type) ||
-      !file.size ||
-      file.size > 2 * 1024 * 1024
-    ) {
-      setUploadError('Choose a PDF, PNG or JPEG document, up to 2 MB.');
-      return;
-    }
-    uploadSubmitting.current = true;
-    setUploading(true);
-    try {
-      const url = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('The document could not be read.'));
-        reader.readAsDataURL(file);
-      });
-      await virtualAccountsService.uploadDocument(merchant.id, selectedBusinessId, {
-        label,
-        filename: file.name,
-        type: file.type as UploadedDocument['type'],
-        url,
-        size: `${(file.size / 1024).toFixed(1)} KB`
-      });
-      await queryClient.invalidateQueries({ queryKey: DATA_KEY });
-      toast.success('Document submitted. Business verification is pending review.');
-    } catch (cause) {
-      const message =
-        cause instanceof Error ? cause.message : 'The document could not be saved. Please retry.';
-      setUploadError(message);
-      toast.error(message);
-    } finally {
-      uploadSubmitting.current = false;
-      setUploading(false);
-    }
-  }
   async function restore() {
     if (!merchant || restoreSubmitting.current) return;
     restoreSubmitting.current = true;
@@ -345,7 +301,6 @@ export default function MerchantDetails({
           </Button>
         )}
         </div>
-      </div>
       {restoreError && (
         <p role="alert" className="text-sm text-red-600">
           {restoreError}
@@ -383,16 +338,6 @@ export default function MerchantDetails({
               </label>
             </div>
           )}
-          {business && (
-            <ApprovalProgress submission={workflowService.current(merchantId, business)} />
-          )}
-          {business && (
-            <Button asChild variant="outline">
-              <Link href={`/dashboard/document-verification/${merchantId}/${business.id}`}>
-                Review submission
-              </Link>
-            </Button>
-          )}
           <Accordion
             type="multiple"
             className="space-y-4"
@@ -403,28 +348,24 @@ export default function MerchantDetails({
             >
               <AccordionTrigger>Uploaded documents</AccordionTrigger>
               <AccordionContent>
-                <p className="mb-3 text-xs text-gray-500">
-                  Upload or replace documents to submit them for verification. PDF, PNG or JPEG, up
-                  to 2 MB each.
-                </p>
-                {uploadError && (
-                  <p role="alert" className="mb-3 text-sm text-red-600">
-                    {uploadError}
-                  </p>
-                )}
-                <div className="grid gap-3 xl:grid-cols-3">
+                <p className="mb-3 text-xs text-gray-500">Documents submitted for verification.</p>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {['CAC Doc', 'MEMART', 'Tax Document'].map((label) => {
                     const document = business?.documents.find((d) => d.label === label);
                     return (
-                      <div key={label} className="rounded-lg border p-4">
-                        <div className="mb-3 flex items-center gap-2">
+                      <div key={label} className="min-w-0 rounded-lg border p-4">
+                        <div className="mb-3 flex min-w-0 items-center gap-2">
                           <FileText size={18} className="text-starter-primary" />
-                          <h3 className="font-medium">{label}</h3>
+                          <h3 className="truncate font-medium" title={label}>
+                            {label}
+                          </h3>
                         </div>
                         {document ? (
                           <>
-                            <p className="break-all text-xs text-gray-700">{document.filename}</p>
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="truncate text-xs text-gray-700" title={document.filename}>
+                              {document.filename}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-gray-500">
                               {document.type === 'application/pdf' ? 'PDF' : 'Image'}
                               {document.size ? ` · ${document.size}` : ''}
                             </p>
@@ -450,28 +391,6 @@ export default function MerchantDetails({
                         ) : (
                           <p className="text-xs text-gray-500">Not uploaded</p>
                         )}
-                        {business && (
-                          <div className="mt-3 space-y-1">
-                            <label
-                              htmlFor={`document-${business.id}-${label}`}
-                              className="text-xs font-medium"
-                            >
-                              {document ? 'Replace document' : 'Upload document'}
-                            </label>
-                            <input
-                              id={`document-${business.id}-${label}`}
-                              type="file"
-                              accept="application/pdf,image/png,image/jpeg"
-                              disabled={uploading}
-                              className="block w-full min-w-0 text-xs file:mr-2 file:rounded-md file:border file:bg-white file:px-2 file:py-1 file:text-xs"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                event.target.value = '';
-                                if (file) void uploadDocument(file, label, business.id);
-                              }}
-                            />
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -485,6 +404,7 @@ export default function MerchantDetails({
               <AccordionTrigger>Personal information</AccordionTrigger>
               <AccordionContent>
                 <Fields
+                  columns={4}
                   entries={[
                     ['First name', merchant.firstName],
                     ['Last name', merchant.lastName],
@@ -503,6 +423,7 @@ export default function MerchantDetails({
               <AccordionContent>
                 {business ? (
                   <Fields
+                    columns={4}
                     entries={[
                       ['Business name', business.name],
                       ['Registration type', business.registrationType],

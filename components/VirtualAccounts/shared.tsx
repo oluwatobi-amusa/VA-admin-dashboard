@@ -77,9 +77,7 @@ export function StatusBadge({ status }: { status: string }) {
       ? 'border-green-200 bg-green-50 text-green-700'
       : status === 'Pending' || status.startsWith('Pending ')
         ? 'border-orange-200 bg-orange-50 text-orange-700'
-        : status === 'Awaiting previous stage'
-          ? 'border-gray-200 bg-gray-50 text-gray-500'
-          : 'border-red-200 bg-red-50 text-red-700';
+        : 'border-red-200 bg-red-50 text-red-700';
   return (
     <Badge variant="outline" className={`${color} gap-1.5 whitespace-nowrap text-xs font-medium`}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -332,13 +330,20 @@ export function Pagination({
     </div>
   );
 }
-export function Fields({ entries }: { entries: [string, ReactNode][] }) {
+export function Fields({ entries, columns }: { entries: [string, ReactNode][]; columns?: number }) {
   return (
-    <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+    <dl
+      className={`grid gap-x-6 gap-y-5 sm:grid-cols-2 ${
+        columns === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3 xl:grid-cols-4'
+      }`}
+    >
       {entries.map(([label, value]) => (
         <div key={label} className="min-w-0">
           <dt className="mb-1 text-xs text-gray-500">{label}</dt>
-          <dd className="break-words text-sm font-medium text-gray-900">
+          <dd
+            className="truncate text-sm font-medium text-gray-900"
+            title={typeof value === 'string' ? value : undefined}
+          >
             {value || 'Not provided'}
           </dd>
         </div>

@@ -1,4 +1,3 @@
-import { workflowService, demoIdentity } from '@/lib/approval-workflow';
 import {
   DashboardData,
   Business,
@@ -102,7 +101,7 @@ const tills: Till[] = merchants.flatMap((merchant, i) =>
     name: `${names[i]} ${j === 0 ? 'Main' : `Branch ${j}`}`,
     number: `0${String(123456780 + i * 10 + j)}`,
     balance: Math.round((125000 + i * 34000 + j * 7250.5) * 100) / 100,
-    status: j === 1 && i % 3 === 0 ? 'Disabled' : 'Active'
+    status: j === 1 && i % 3 === 0 ? 'Inactive' : 'Active'
   }))
 );
 const transactions: Transaction[] = tills.flatMap((till, i) =>
@@ -123,6 +122,15 @@ const transactions: Transaction[] = tills.flatMap((till, i) =>
 const STORAGE_KEY = 'virtual-account-disabled-tills-v1';
 const RESTORED_MERCHANTS_KEY = 'virtual-account-restored-merchants-v1';
 const UPLOADS_KEY = 'virtual-account-document-uploads-v1';
+const VERIFICATION_DECISIONS_KEY = 'virtual-account-verification-decisions-v1';
+interface SavedVerificationDecision {
+  merchantId: string;
+  businessId: string;
+  fingerprint: string;
+  status: Exclude<VerificationStatus, 'Pending'>;
+  reason: string;
+  reviewedAt: string;
+}
 interface SavedUpload {
   merchantId: string;
   businessId: string;
@@ -183,6 +191,24 @@ function readDisabled(): string[] {
     throw new Error('Saved account settings could not be read.');
   return value;
 }
+function readVerificationDecisions(): SavedVerificationDecision[] {
+  const value: unknown = JSON.parse(localStorage.getItem(VERIFICATION_DECISIONS_KEY) || '[]');
+  if (
+    !Array.isArray(value) ||
+    value.some(
+      (decision) =>
+        !decision ||
+        typeof decision.merchantId !== 'string' ||
+        typeof decision.businessId !== 'string' ||
+        typeof decision.fingerprint !== 'string' ||
+        !['Approved', 'Declined'].includes(decision.status) ||
+        typeof decision.reason !== 'string' ||
+        typeof decision.reviewedAt !== 'string'
+    )
+  )
+    throw new Error('Saved verification decisions could not be read.');
+  return value;
+}
 
 /** Replace these methods with API requests when virtual-account endpoints are available. */
 export const virtualAccountsService = {
@@ -190,18 +216,16 @@ export const virtualAccountsService = {
     await delay();
     const disabled = readDisabled();
     const restored = readRestoredMerchants();
+    const decisions = readVerificationDecisions();
     const dashboardMerchants: Merchant[] = currentMerchants().map((merchant) => {
       const businesses = merchant.businesses.map((business): Business => {
-        const cycle = workflowService.current(merchant.id, business);
-        const lastReview = cycle.reviews.at(-1);
-        const decision =
-          cycle.stage === 'Approved' || cycle.stage === 'Rejected'
-            ? {
-                status: cycle.stage === 'Approved' ? ('Approved' as const) : ('Declined' as const),
-                reason: lastReview?.comment,
-                reviewedAt: lastReview?.timestamp
-              }
-            : undefined;
+        const fingerprint = JSON.stringify(business.documents);
+        const decision = decisions.find(
+          (item) =>
+            item.merchantId === merchant.id &&
+            item.businessId === business.id &&
+            item.fingerprint === fingerprint
+        );
         const submittedAt =
           business.documents
             .map((document) => document.uploadedAt)
@@ -251,15 +275,7 @@ export const virtualAccountsService = {
       transactions,
       tills: tills.map((till) => ({
         ...till,
-        status:
-          disabled.includes(till.id) || till.status === 'Disabled'
-            ? 'Disabled'
-            : dashboardMerchants
-                  .find((merchant) => merchant.id === till.merchantId)
-                  ?.businesses.find((business) => business.id === till.businessId)?.status ===
-                'Active'
-              ? 'Active'
-              : 'Pending'
+        status: disabled.includes(till.id) || till.status === 'Inactive' ? 'Inactive' : 'Active'
       }))
     };
   },
@@ -287,12 +303,20 @@ export const virtualAccountsService = {
       )
     )
       throw new Error('All required documents must be uploaded before approval.');
-    const submission = workflowService.current(id, business);
-    workflowService.decide(
-      submission.id,
-      demoIdentity.role(),
-      status === 'Declined' ? 'Rejected' : 'Approved',
-      reason
+    const decisions = readVerificationDecisions();
+    localStorage.setItem(
+      VERIFICATION_DECISIONS_KEY,
+      JSON.stringify([
+        ...decisions.filter((decision) => decision.merchantId !== id || decision.businessId !== businessId),
+        {
+          merchantId: id,
+          businessId,
+          fingerprint: JSON.stringify(business.documents),
+          status,
+          reason: reason.trim(),
+          reviewedAt: new Date().toISOString()
+        }
+      ])
     );
   },
   async uploadDocument(

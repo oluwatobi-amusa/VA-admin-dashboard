@@ -104,13 +104,13 @@ export default function Users() {
             options={['All roles', ...ROLES]}
           />
           <FilterSelect
-            label="Invitation status"
+            label="User status"
             value={status}
             onChange={(v) => {
               setStatus(v);
               setPage(1);
             }}
-            options={['All statuses', 'Pending', 'Accepted']}
+            options={['All statuses', 'Pending', 'Accepted', 'Disabled']}
           />
         </div>
         <RecordsTable
@@ -118,7 +118,7 @@ export default function Users() {
             'Full name',
             'Email address',
             'Role',
-            'Invitation status',
+            'User status',
             'Date invited',
             'Action'
           ]}
@@ -145,7 +145,24 @@ export default function Users() {
                 Resend invitation
               </Button>
             ) : (
-              '—'
+              <Button
+                key="access"
+                variant={u.status === 'Disabled' ? 'outline' : 'destructive'}
+                size="sm"
+                onClick={() => {
+                  try {
+                    const updated = service.toggleAccess(u.id);
+                    setUsers(service.list());
+                    toast.success(
+                      `${updated.name} has been ${updated.status === 'Disabled' ? 'disabled' : 'enabled'}.`
+                    );
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                {u.status === 'Disabled' ? 'Enable user' : 'Disable user'}
+              </Button>
             )
           ])}
         />

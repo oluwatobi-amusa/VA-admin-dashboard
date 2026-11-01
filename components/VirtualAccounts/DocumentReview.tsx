@@ -1,15 +1,15 @@
 'use client';
 
-import { workflowService } from '@/lib/approval-workflow';
-import ApprovalProgress from './ApprovalProgress';
-import { useDemoRole } from './DemoRole';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Download, Eye, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Business, UploadedDocument } from '@/app/(dashboard)/dashboard/types/virtual-accounts';
-import { REQUIRED_DOCUMENTS } from '@/app/(dashboard)/dashboard/queries/virtual-accounts';
+import {
+  REQUIRED_DOCUMENTS,
+  virtualAccountsService
+} from '@/app/(dashboard)/dashboard/queries/virtual-accounts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,15 +34,12 @@ import {
 
 export default function DocumentReview({
   merchantId,
-  businessId,
-  submissionId
+  businessId
 }: {
   merchantId: string;
   businessId: string;
-  submissionId?: string;
 }) {
   const query = useDashboard();
-  const role = useDemoRole();
   const queryClient = useQueryClient();
   const [decision, setDecision] = useState<'Approved' | 'Declined' | null>(null);
   const [reason, setReason] = useState('');
@@ -56,11 +53,7 @@ export default function DocumentReview({
 
   const selected = merchant?.businesses.find((business) => business.id === businessId);
 
-  const cycle = selected ? workflowService.current(merchantId, selected) : undefined;
-  const submission = submissionId
-    ? workflowService.all().find((s) => s.id === submissionId)
-    : cycle;
-  const canReview = submission?.id === cycle?.id && submission?.stage === role;
+  const canReview = selected?.verification.status === 'Pending';
   async function openPreview(document: UploadedDocument) {
     const request = ++previewRequest.current;
     setPreview(document);
@@ -84,15 +77,14 @@ export default function DocumentReview({
     setBusy(true);
     setError('');
     try {
-      if (!submission) throw new Error('Submission not found.');
-      workflowService.decide(
-        submission.id,
-        role,
-        decision === 'Declined' ? 'Rejected' : 'Approved',
+      await virtualAccountsService.reviewBusiness(
+        merchantId,
+        businessId,
+        decision,
         reason
       );
       await queryClient.invalidateQueries({ queryKey: DATA_KEY });
-      toast.success(`${selected.name}: ${role} review recorded.`);
+      toast.success(`${selected.name}: verification decision recorded.`);
       setDecision(null);
       setReason('');
     } catch (cause) {
@@ -135,7 +127,7 @@ export default function DocumentReview({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="space-y-2">
                 <p className="text-sm text-gray-500">Merchant: {merchant?.name}</p>
-                {submission && <ApprovalProgress submission={submission} />}
+                <StatusBadge status={selected.verification.status} />
               </div>
               <Button asChild variant="ghost" size="sm">
                 <Link href={`/dashboard/merchants/${merchantId}?business=${selected.id}`}>
@@ -165,13 +157,11 @@ export default function DocumentReview({
                 </p>
               </div>
             )}
-            {[{ ...selected, documents: submission?.documents || selected.documents }].map(
-              (business) => (
-                <section key={business.id} className="space-y-3">
-                  <h3 className="font-semibold">{business.name}</h3>
+            <section className="space-y-3">
+                  <h3 className="font-semibold">{selected.name}</h3>
                   <div className="grid gap-3 md:grid-cols-3">
                     {REQUIRED_DOCUMENTS.map((label) => {
-                      const document = business.documents.find((item) => item.label === label);
+                      const document = selected.documents.find((item) => item.label === label);
                       return (
                         <div key={label} className="min-w-0 rounded-lg border p-4">
                           <h4 className="flex items-center gap-2 text-sm font-medium">
@@ -212,9 +202,7 @@ export default function DocumentReview({
                       );
                     })}
                   </div>
-                </section>
-              )
-            )}
+            </section>
             {canReview && (
               <>
                 {missing.length > 0 && (
@@ -247,47 +235,6 @@ export default function DocumentReview({
           </>
         )}
       </Card>
-      {!canReview && submission && (
-        <p className="text-sm text-gray-500">
-          {submission.stage === 'Approved' || submission.stage === 'Rejected'
-            ? 'This approval cycle is closed.'
-            : 'Awaiting ' + submission.stage + ' review.'}
-        </p>
-      )}
-      <Card className="space-y-4 p-5 shadow-none">
-        <h2 className="font-semibold">Review history</h2>
-        {(submissionId
-          ? [submission].filter(Boolean)
-          : workflowService.history(merchantId, businessId)
-        ).map(
-          (cycle) =>
-            cycle && (
-              <section key={cycle.id} className="space-y-3">
-                <p className="text-xs text-gray-500">
-                  Cycle submitted {date(cycle.submittedAt, true)}
-                </p>
-                {cycle.reviews.length ? (
-                  cycle.reviews.map((review, i) => (
-                    <div key={i} className="rounded border p-3 text-sm">
-                      <div className="flex flex-wrap justify-between gap-2">
-                        <p className="font-medium">
-                          {review.reviewer} ? {review.role}
-                        </p>
-                        <StatusBadge status={review.decision} />
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">{date(review.timestamp, true)}</p>
-                      <p className="mt-2 whitespace-pre-wrap break-words">
-                        {review.comment || 'No comment provided.'}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No decisions yet.</p>
-                )}
-              </section>
-            )
-        )}
-      </Card>
       <Dialog
         open={!!decision}
         onOpenChange={(open) => {
@@ -304,7 +251,7 @@ export default function DocumentReview({
         >
           <DialogHeader>
             <DialogTitle>
-              {decision === 'Approved' ? 'Approve' : 'Reject'} {role} review?
+              {decision === 'Approved' ? 'Approve' : 'Decline'} verification?
             </DialogTitle>
             <DialogDescription>
               {decision === 'Approved'

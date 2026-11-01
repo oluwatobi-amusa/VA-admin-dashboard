@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from './provider';
 
 export const metadata: Metadata = {
-  title: 'Virtual Account Admin',
+  title: 'Payvantage Virtual Account Admin',
   description: 'Manage merchants, virtual accounts and transaction lookups',
   icons: {
     icon: '/favicon.png'

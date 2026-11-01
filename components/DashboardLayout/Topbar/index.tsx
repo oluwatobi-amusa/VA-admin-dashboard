@@ -17,15 +17,13 @@ interface TopBarProps {
 export const getDashboardPageTitle = (pathname: string) =>
   pathname.startsWith('/dashboard/merchants')
     ? 'Merchants'
-    : pathname.startsWith('/dashboard/disputes')
-      ? 'Disputes'
-      : pathname.startsWith('/dashboard/users')
-        ? 'Users'
-        : pathname.startsWith('/dashboard/approvals')
-          ? 'Approvals'
-          : pathname.startsWith('/dashboard/document-verification')
-            ? 'Document Verification'
-            : 'Overview';
+    : pathname.startsWith('/dashboard/users')
+      ? 'Users'
+      : pathname.startsWith('/dashboard/approvals')
+        ? 'Approvals'
+        : pathname.startsWith('/dashboard/document-verification')
+          ? 'Document Verification'
+          : 'Overview';
 
 export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps) {
   const pathname = usePathname();

@@ -35,4 +35,13 @@ test('invitation permissions, duplicates, resend tokens and assigned role on acc
   const user=u.invite('Test Person','Test@example.com','Compliance'); assert.equal(user.status,'Pending'); assert.throws(()=>u.invite('Other',' test@example.com ','Staff'),/already/);
   const resent=u.resend(user.id); assert.notEqual(resent.token,user.token); assert.equal(u.inspect(user.token),undefined);
   const accepted=u.accept(resent.token,'demo-password'); assert.equal(accepted.role,'Compliance'); assert.equal(accepted.status,'Accepted'); assert.throws(()=>u.accept(resent.token,'demo-password'),/already/);
+  const disabled=u.toggleAccess(user.id); assert.equal(disabled.status,'Disabled'); assert.equal(disabled.role,'Compliance');
+  const enabled=u.toggleAccess(user.id); assert.equal(enabled.status,'Accepted'); assert.equal(enabled.role,'Compliance');
+  const pending=u.invite('Pending User','pending@example.com','Staff'); assert.throws(()=>u.toggleAccess(pending.id),/Only accepted users/);
+  for (const member of u.list()) {
+    if (member.status === 'Accepted') {
+      assert.equal(u.toggleAccess(member.id).status,'Disabled');
+      assert.equal(u.toggleAccess(member.id).status,'Accepted');
+    }
+  }
 });

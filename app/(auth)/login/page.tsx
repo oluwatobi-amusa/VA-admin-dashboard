@@ -36,11 +36,14 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
+    <div
+      className="flex min-h-screen items-center justify-center bg-[#3e4095] bg-cover bg-center p-4"
+      style={{ backgroundImage: "url('/Group%203962.svg')" }}
+    >
       <div className="w-full max-w-md bg-white rounded-lg shadow-sm p-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <p className="text-base text-gray-900 font-medium">Sign in</p>
+          <h1 className="text-base font-medium text-gray-900">Payvantage Virtual Account Admin</h1>
         </div>
 
         {/* Form */}

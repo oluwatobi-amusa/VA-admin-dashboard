@@ -4,7 +4,7 @@ export interface ManagedUser {
   name: string;
   email: string;
   role: Role;
-  status: 'Pending' | 'Accepted';
+  status: 'Pending' | 'Accepted' | 'Disabled';
   invitedAt: string;
   token?: string;
 }
@@ -59,6 +59,16 @@ export const userManagementService = {
     if (!user || user.status !== 'Pending')
       throw new Error('Only pending invitations can be resent.');
     user.token = crypto.randomUUID();
+    save(users);
+    return user;
+  },
+  toggleAccess(id: string) {
+    admin();
+    const users = read();
+    const user = users.find((item) => item.id === id);
+    if (!user || user.status === 'Pending')
+      throw new Error('Only accepted users can be enabled or disabled.');
+    user.status = user.status === 'Accepted' ? 'Disabled' : 'Accepted';
     save(users);
     return user;
   },
