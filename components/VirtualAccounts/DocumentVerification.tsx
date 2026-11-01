@@ -52,8 +52,7 @@ export default function DocumentVerification() {
       <SummaryCards
         items={(['Pending', 'Approved', 'Declined'] as const).map((value) => ({
           label: `${value} verification`,
-          value: submissions.filter(({ business }) => business.verification.status === value)
-            .length
+          value: submissions.filter(({ business }) => business.verification.status === value).length
         }))}
       />
       <Card className="overflow-hidden shadow-none">

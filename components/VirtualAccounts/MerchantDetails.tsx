@@ -178,8 +178,8 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
           <DialogHeader>
             <DialogTitle>Deactivate account?</DialogTitle>
             <DialogDescription>
-              {selected?.name} ({selected?.number}) will become inactive and will no longer be available
-              to receive payments.
+              {selected?.name} ({selected?.number}) will become inactive and will no longer be
+              available to receive payments.
             </DialogDescription>
           </DialogHeader>
           {error && (
@@ -300,7 +300,7 @@ export default function MerchantDetails({
             {restoring ? 'Restoring…' : 'Restore merchant'}
           </Button>
         )}
-        </div>
+      </div>
       {restoreError && (
         <p role="alert" className="text-sm text-red-600">
           {restoreError}
@@ -338,10 +338,7 @@ export default function MerchantDetails({
               </label>
             </div>
           )}
-          <Accordion
-            type="multiple"
-            className="space-y-4"
-          >
+          <Accordion type="multiple" className="space-y-4">
             <AccordionItem
               value="documents"
               className="rounded-[10px] border border-b-4 border-b-[rgba(196,196,196,0.24)] bg-white px-5"

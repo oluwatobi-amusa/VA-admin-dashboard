@@ -49,7 +49,9 @@ const Sidebar: FC<SidebarProps> = ({ isSidebarOpen = true, onToggleSidebar }) =>
         <div className="flex items-center justify-between  p-4 z-50">
           <div className="flex items-center gap-2">
             {/* <MarbleLogo /> */}
-            <p className="text-sm font-bold text-starter-primary">Virtual Account Admin Dashboard</p>
+            <p className="text-sm font-bold text-starter-primary">
+              Virtual Account Admin Dashboard
+            </p>
           </div>
           <button
             type="button"

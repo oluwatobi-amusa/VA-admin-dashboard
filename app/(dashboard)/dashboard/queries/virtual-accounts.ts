@@ -307,7 +307,9 @@ export const virtualAccountsService = {
     localStorage.setItem(
       VERIFICATION_DECISIONS_KEY,
       JSON.stringify([
-        ...decisions.filter((decision) => decision.merchantId !== id || decision.businessId !== businessId),
+        ...decisions.filter(
+          (decision) => decision.merchantId !== id || decision.businessId !== businessId
+        ),
         {
           merchantId: id,
           businessId,

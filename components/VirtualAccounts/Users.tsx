@@ -114,14 +114,7 @@ export default function Users() {
           />
         </div>
         <RecordsTable
-          columns={[
-            'Full name',
-            'Email address',
-            'Role',
-            'User status',
-            'Date invited',
-            'Action'
-          ]}
+          columns={['Full name', 'Email address', 'Role', 'User status', 'Date invited', 'Action']}
           rows={filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((u) => [
             u.name,
             u.email,

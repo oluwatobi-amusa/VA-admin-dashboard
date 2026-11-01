@@ -77,12 +77,7 @@ export default function DocumentReview({
     setBusy(true);
     setError('');
     try {
-      await virtualAccountsService.reviewBusiness(
-        merchantId,
-        businessId,
-        decision,
-        reason
-      );
+      await virtualAccountsService.reviewBusiness(merchantId, businessId, decision, reason);
       await queryClient.invalidateQueries({ queryKey: DATA_KEY });
       toast.success(`${selected.name}: verification decision recorded.`);
       setDecision(null);
@@ -158,50 +153,50 @@ export default function DocumentReview({
               </div>
             )}
             <section className="space-y-3">
-                  <h3 className="font-semibold">{selected.name}</h3>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {REQUIRED_DOCUMENTS.map((label) => {
-                      const document = selected.documents.find((item) => item.label === label);
-                      return (
-                        <div key={label} className="min-w-0 rounded-lg border p-4">
-                          <h4 className="flex items-center gap-2 text-sm font-medium">
-                            <FileText size={16} />
-                            {label}
-                          </h4>
-                          {document ? (
-                            <>
-                              <p className="mt-2 break-all text-xs text-gray-700">
-                                {document.filename}
-                              </p>
-                              <p className="mt-1 text-xs text-gray-500">
-                                Uploaded {date(document.uploadedAt, true)}
-                              </p>
-                              <div className="mt-3 flex flex-wrap gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    void openPreview(document);
-                                  }}
-                                >
-                                  <Eye />
-                                  Preview
-                                </Button>
-                                <Button size="sm" variant="ghost" asChild>
-                                  <a href={document.url} download={document.filename}>
-                                    <Download />
-                                    Download
-                                  </a>
-                                </Button>
-                              </div>
-                            </>
-                          ) : (
-                            <p className="mt-2 text-xs text-red-600">Not uploaded</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+              <h3 className="font-semibold">{selected.name}</h3>
+              <div className="grid gap-3 md:grid-cols-3">
+                {REQUIRED_DOCUMENTS.map((label) => {
+                  const document = selected.documents.find((item) => item.label === label);
+                  return (
+                    <div key={label} className="min-w-0 rounded-lg border p-4">
+                      <h4 className="flex items-center gap-2 text-sm font-medium">
+                        <FileText size={16} />
+                        {label}
+                      </h4>
+                      {document ? (
+                        <>
+                          <p className="mt-2 break-all text-xs text-gray-700">
+                            {document.filename}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Uploaded {date(document.uploadedAt, true)}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                void openPreview(document);
+                              }}
+                            >
+                              <Eye />
+                              Preview
+                            </Button>
+                            <Button size="sm" variant="ghost" asChild>
+                              <a href={document.url} download={document.filename}>
+                                <Download />
+                                Download
+                              </a>
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="mt-2 text-xs text-red-600">Not uploaded</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </section>
             {canReview && (
               <>

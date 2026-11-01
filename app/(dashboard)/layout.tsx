@@ -39,10 +39,17 @@ export default function Layout({ children }: LayoutProps) {
 
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-gray-50">
             <main className="relative mt-20 flex-1 overflow-y-auto p-4 pb-24 md:p-6 md:pb-24">
-              <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-xs text-gray-500">
-                <Link href="/dashboard" className="hover:text-gray-900">Virtual Accounts</Link>
+              <nav
+                aria-label="Breadcrumb"
+                className="mb-4 flex items-center gap-2 text-xs text-gray-500"
+              >
+                <Link href="/dashboard" className="hover:text-gray-900">
+                  Virtual Accounts
+                </Link>
                 <ChevronRight size={14} aria-hidden="true" />
-                <span aria-current="page" className="text-gray-700">{pageTitle}</span>
+                <span aria-current="page" className="text-gray-700">
+                  {pageTitle}
+                </span>
               </nav>
               {children}
             </main>

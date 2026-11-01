@@ -91,10 +91,7 @@ const LoginPage = () => {
             />
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              className="h-12 w-full font-medium"
-            >
+            <Button type="submit" className="h-12 w-full font-medium">
               Sign in
             </Button>
           </form>
