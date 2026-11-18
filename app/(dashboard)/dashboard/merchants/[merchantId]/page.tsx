@@ -12,7 +12,7 @@ export default async function Page({
     <MerchantDetails
       key={`${merchantId}-${tab || 'profile'}-${business || ''}`}
       merchantId={merchantId}
-      initialTab={tab === 'tills' ? 'tills' : 'profile'}
+      initialTab={tab === 'tills' || tab === 'transactions' ? tab : 'profile'}
       initialBusinessId={business}
     />
   );

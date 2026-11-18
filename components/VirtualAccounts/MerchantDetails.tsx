@@ -2,11 +2,12 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ArrowLeft, Download, Eye, FileText, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FileText, MoreHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Merchant,
   Till,
+  Transaction,
   UploadedDocument
 } from '@/app/(dashboard)/dashboard/types/virtual-accounts';
 import { virtualAccountsService } from '@/app/(dashboard)/dashboard/queries/virtual-accounts';
@@ -36,7 +37,9 @@ import {
 import {
   DATA_KEY,
   DataState,
+  DateFilters,
   Fields,
+  FilterSelect,
   PageHeading,
   Pagination,
   PAGE_SIZE,
@@ -45,6 +48,7 @@ import {
   State,
   StatusBadge,
   date,
+  inRange,
   money,
   useDashboard
 } from './shared';
@@ -207,6 +211,120 @@ function TillAccounts({ merchant, tills }: { merchant: Merchant; tills: Till[] }
   );
 }
 
+function MerchantTransactions({
+  merchantId,
+  tills,
+  transactions
+}: {
+  merchantId: string;
+  tills: Till[];
+  transactions: Transaction[];
+}) {
+  const [search, setSearch] = useState('');
+  const [type, setType] = useState('All');
+  const [status, setStatus] = useState('All');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [page, setPage] = useState(1);
+  const accounts = tills.filter((till) => till.merchantId === merchantId);
+  const accountIds = new Set(accounts.map((account) => account.id));
+  const merchantTransactions = transactions.filter((transaction) =>
+    accountIds.has(transaction.tillId)
+  );
+  const change = (setter: (value: string) => void) => (value: string) => {
+    setter(value);
+    setPage(1);
+  };
+  const filtered = merchantTransactions.filter(
+    (transaction) =>
+      `${transaction.reference} ${transaction.counterparty}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()) &&
+      (type === 'All' || transaction.type === type) &&
+      (status === 'All' || transaction.status === status) &&
+      inRange(transaction.date, from, to)
+  );
+  return (
+    <Card className="overflow-hidden shadow-none">
+      <div className="space-y-3 border-b p-4">
+        <h2 className="font-semibold">Transactions</h2>
+        <div className="flex flex-wrap items-end gap-3">
+          <SearchInput
+            value={search}
+            onChange={change(setSearch)}
+            placeholder="Search reference or sender / recipient"
+          />
+          <FilterSelect
+            label="Type"
+            value={type}
+            onChange={change(setType)}
+            options={['All', 'Credit', 'Debit']}
+          />
+          <FilterSelect
+            label="Status"
+            value={status}
+            onChange={change(setStatus)}
+            options={['All', 'Successful', 'Pending', 'Failed']}
+          />
+          <DateFilters from={from} to={to} onFrom={change(setFrom)} onTo={change(setTo)} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setType('All');
+              setStatus('All');
+              setFrom('');
+              setTo('');
+              setPage(1);
+            }}
+          >
+            <X />
+            Clear filters
+          </Button>
+        </div>
+        {from && to && from > to && (
+          <p role="alert" className="text-xs text-red-600">
+            From date must be before To date.
+          </p>
+        )}
+      </div>
+      <RecordsTable
+        columns={[
+          'Transaction reference',
+          'Date and time',
+          'Transaction type',
+          'Sender / Recipient name',
+          'Sender / Recipient account number',
+          'Bank',
+          'Description',
+          'Amount',
+          'Status'
+        ]}
+        empty={
+          merchantTransactions.length
+            ? 'No transactions match your search or filters.'
+            : 'No transactions for this merchant yet.'
+        }
+        rows={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((transaction) => [
+          <span key="reference" className="font-medium text-starter-primary">
+            {transaction.reference}
+          </span>,
+          date(transaction.date, true),
+          transaction.type,
+          transaction.counterparty,
+          transaction.counterpartyNumber,
+          transaction.bank,
+          transaction.description,
+          money(transaction.amount),
+          <StatusBadge key="status" status={transaction.status} />
+        ])}
+      />
+      <Pagination count={filtered.length} page={page} onChange={setPage} />
+    </Card>
+  );
+}
+
 export default function MerchantDetails({
   merchantId,
   initialTab = 'profile',
@@ -313,6 +431,9 @@ export default function MerchantDetails({
           </TabsTrigger>
           <TabsTrigger value="tills" className="rounded-full">
             Till accounts
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="rounded-full">
+            Transaction history
           </TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="space-y-4">
@@ -443,6 +564,13 @@ export default function MerchantDetails({
         </TabsContent>
         <TabsContent value="tills">
           <TillAccounts merchant={merchant} tills={query.data.tills} />
+        </TabsContent>
+        <TabsContent value="transactions">
+          <MerchantTransactions
+            merchantId={merchant.id}
+            tills={query.data.tills}
+            transactions={query.data.transactions}
+          />
         </TabsContent>
       </Tabs>
       <Dialog
