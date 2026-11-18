@@ -54,6 +54,10 @@ html {
   font-family: 'Schibsted Grotesk', sans-serif;
 }
 
+.currency-symbol {
+  font-family: 'Montserrat', sans-serif;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -1,5 +1,6 @@
 export type MerchantStatus = 'Active' | 'Suspended';
 export type TillStatus = 'Active' | 'Inactive';
+export type VirtualAccountType = 'Dynamic' | 'Static';
 export type TransactionStatus = 'Successful' | 'Pending' | 'Failed';
 export type VerificationStatus = 'Pending' | 'Approved' | 'Declined';
 export interface MerchantVerification {
@@ -48,6 +49,7 @@ export interface Till {
   businessId: string;
   name: string;
   number: string;
+  accountType: VirtualAccountType;
   balance: number;
   status: TillStatus;
 }

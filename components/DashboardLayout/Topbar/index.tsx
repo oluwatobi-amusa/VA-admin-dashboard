@@ -19,10 +19,10 @@ export const getDashboardPageTitle = (pathname: string) =>
     ? 'Merchants'
     : pathname.startsWith('/dashboard/users')
       ? 'Users'
-      : pathname.startsWith('/dashboard/approvals')
-        ? 'Approvals'
-        : pathname.startsWith('/dashboard/document-verification')
-          ? 'Document Verification'
+      : pathname.startsWith('/dashboard/document-verification')
+        ? 'Business verification'
+        : pathname.startsWith('/dashboard/transactions')
+          ? 'Transaction history'
           : 'Overview';
 
 export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps) {

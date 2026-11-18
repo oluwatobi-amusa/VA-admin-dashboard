@@ -20,8 +20,12 @@ import {
 
 export const DATA_KEY = ['virtual-accounts'];
 export const PAGE_SIZE = 5;
-export const money = (amount: number) =>
-  `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const money = (amount: number): ReactNode => (
+  <span className="font-sans">
+    <span className="currency-symbol">₦</span>
+    {amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </span>
+);
 export const date = (value: string, withTime = false) =>
   new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
@@ -85,7 +89,7 @@ export function StatusBadge({ status }: { status: string }) {
     </Badge>
   );
 }
-export function SummaryCards({ items }: { items: { label: string; value: string | number }[] }) {
+export function SummaryCards({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => {
@@ -253,10 +257,7 @@ export function RecordsTable({
       <TableHeader className="bg-gray-50">
         <TableRow>
           {columns.map((column) => (
-            <TableHead
-              key={column}
-              className={`whitespace-nowrap text-[16px] font-bold ${monetary(column) ? 'text-right' : ''}`}
-            >
+            <TableHead key={column} className="whitespace-nowrap text-left text-[16px] font-bold">
               {column}
             </TableHead>
           ))}
@@ -269,7 +270,7 @@ export function RecordsTable({
               {cells.map((cell, j) => (
                 <TableCell
                   key={j}
-                  className={`whitespace-nowrap text-[16px] font-sans ${monetary(columns[j]) ? 'text-right tabular-nums' : ''}`}
+                  className={`whitespace-nowrap text-left text-[16px] font-sans ${monetary(columns[j]) ? 'tabular-nums' : ''}`}
                 >
                   {cell}
                 </TableCell>

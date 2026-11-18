@@ -100,7 +100,7 @@ export default function DocumentReview({
   }
 
   if (!query.data) return <DataState query={query} />;
-  const back = { href: '/dashboard/approvals', label: 'Back to Approvals' };
+  const back = { href: '/dashboard/document-verification', label: 'Back to Business verification' };
   if (!selected)
     return (
       <div className="space-y-4">

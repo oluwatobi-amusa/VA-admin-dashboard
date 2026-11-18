@@ -100,6 +100,7 @@ const tills: Till[] = merchants.flatMap((merchant, i) =>
     businessId: merchant.businesses[j % merchant.businesses.length].id,
     name: `${names[i]} ${j === 0 ? 'Main' : `Branch ${j}`}`,
     number: `0${String(123456780 + i * 10 + j)}`,
+    accountType: j % 2 === 0 ? 'Dynamic' : 'Static',
     balance: Math.round((125000 + i * 34000 + j * 7250.5) * 100) / 100,
     status: j === 1 && i % 3 === 0 ? 'Inactive' : 'Active'
   }))

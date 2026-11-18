@@ -1,5 +1,6 @@
 import { IconType } from 'react-icons/lib';
 import { BiCheckShield } from 'react-icons/bi';
+import { RiExchangeDollarLine } from 'react-icons/ri';
 import { BsFillGridFill } from 'react-icons/bs';
 import { HiUsers } from 'react-icons/hi2';
 
@@ -20,7 +21,7 @@ export const LINKS: SideBarLinks = [
     icon: BsFillGridFill
   },
   { name: 'Merchants', url: '/dashboard/merchants', icon: HiUsers },
-  { name: 'Document Verification', url: '/dashboard/document-verification', icon: BiCheckShield },
-  { name: 'Users', url: '/dashboard/users', icon: HiUsers },
-  { name: 'Approvals', url: '/dashboard/approvals', icon: BiCheckShield }
+  { name: 'Business verification', url: '/dashboard/document-verification', icon: BiCheckShield },
+  { name: 'Transaction history', url: '/dashboard/transactions', icon: RiExchangeDollarLine },
+  { name: 'Users', url: '/dashboard/users', icon: HiUsers }
 ];

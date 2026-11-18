@@ -46,7 +46,7 @@ export default function DocumentVerification() {
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Document Verification"
+        title="Business verification"
         description="Review each business’s uploaded documents and approve or decline its verification."
       />
       <SummaryCards

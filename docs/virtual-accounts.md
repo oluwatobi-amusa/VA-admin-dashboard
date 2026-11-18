@@ -17,7 +17,7 @@ Account disabling is saved in localStorage under
 `virtual-account-disabled-tills-v1`. Delete that key to reset mock account status.
 The sample PDF and image uploads are demonstration documents.
 
-Document Verification at `/dashboard/document-verification` lists one submission
+Business verification at `/dashboard/document-verification` lists one submission
 per business, with merchant and business names. Each business has a dedicated
 review page at `/dashboard/document-verification/{merchantId}/{businessId}`.
 Approval requires CAC Doc, MEMART and Tax Document for that business; decline
@@ -25,7 +25,7 @@ requires a reason. Decisions and replacement uploads affect only that business.
 Uploading a document returns its verification to Pending while preserving the
 other businesses' decisions. Merchant profiles show the selected business's
 documents without a verification status section. Status and decline reasons are
-shown on the Document Verification review page. The merchants table summarizes business statuses:
+shown on the Business verification review page. The merchants table summarizes business statuses:
 Pending if any business is pending, otherwise Declined if any business is
 declined, otherwise Approved.
 

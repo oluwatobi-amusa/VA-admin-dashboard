@@ -56,7 +56,7 @@ export default function Overview() {
             value: money(successfulVolume(`${currentMonth}-01`, `${currentMonth}-31`))
           },
           {
-            label: 'Pending Business Approvals',
+            label: 'Pending business verifications',
             value: merchants.reduce(
               (count, merchant) =>
                 count +
